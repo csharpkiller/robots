@@ -40,7 +40,11 @@ public class MainApplicationFrame extends JFrame
         addWindow(gameWindow);
 
         setJMenuBar(generateMenuBar());
-        setDefaultCloseOperation(EXIT_ON_CLOSE);
+        //setDefaultCloseOperation(EXIT_ON_CLOSE); def
+
+
+        setTitle("Main Application");
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
     }
     
     protected LogWindow createLogWindow()
@@ -91,8 +95,11 @@ public class MainApplicationFrame extends JFrame
     
     private JMenuBar generateMenuBar()
     {
+        UIManager.put("OptionPane.yesButtonText", "Да");
+        UIManager.put("OptionPane.noButtonText", "Нет");
+
         JMenuBar menuBar = new JMenuBar();
-        
+
         JMenu lookAndFeelMenu = new JMenu("Режим отображения");
         lookAndFeelMenu.setMnemonic(KeyEvent.VK_V);
         lookAndFeelMenu.getAccessibleContext().setAccessibleDescription(
