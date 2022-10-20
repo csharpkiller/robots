@@ -2,11 +2,14 @@ package gui;
 
 import java.awt.Dimension;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.KeyEvent;
+import java.awt.event.*;
+import java.awt.geom.Point2D;
+import java.io.Serializable;
 import java.security.Key;
 
 import javax.swing.*;
+import javax.swing.event.MenuEvent;
+import javax.swing.event.MenuListener;
 
 import log.Logger;
 
@@ -16,10 +19,12 @@ import log.Logger;
  * Следует разделить его на серию более простых методов (или вообще выделить отдельный класс).
  *
  */
-public class MainApplicationFrame extends JFrame
+public class MainApplicationFrame extends JFrame implements Serializable
 {
     private final JDesktopPane desktopPane = new JDesktopPane();
-    
+    private Point2D gameWindowLocation;
+    private Point2D logWindowLocation;
+
     public MainApplicationFrame() {
         //Make the big window be indented 50 pixels from each edge
         //of the screen.
@@ -39,7 +44,7 @@ public class MainApplicationFrame extends JFrame
         gameWindow.setSize(400,  400);
         addWindow(gameWindow);
 
-        setJMenuBar(generateMenuBar());
+        setJMenuBar(generateMenuBar(logWindow, gameWindow));
         //setDefaultCloseOperation(EXIT_ON_CLOSE); def
 
 
@@ -93,18 +98,46 @@ public class MainApplicationFrame extends JFrame
 //        return menuBar;
 //    }
     
-    private JMenuBar generateMenuBar()
+    private JMenuBar generateMenuBar(LogWindow logWindow, GameWindow gameWindow)
     {
         UIManager.put("OptionPane.yesButtonText", "Да");
         UIManager.put("OptionPane.noButtonText", "Нет");
 
         JMenuBar menuBar = new JMenuBar();
 
+
+        /*JMenu exit = new JMenu("Выход");
+        ExitAction exitAction = new ExitAction();
+        exit.add(exitAction);*/
+
+        menuBar.add(createLookAndFeelMenu());
+        menuBar.add(createTestMenu());
+        menuBar.add(createExitMenu());
+        return menuBar;
+    }
+    // secv pizda lagaet nice nout
+
+    private JMenu createExitMenu(){
+
+        JMenu exitMenu = new JMenu("Выйти из приложения");
+        exitMenu.setMnemonic(KeyEvent.VK_Q);
+        {
+            JMenuItem exitMenuItem = new JMenuItem("Выйти", KeyEvent.VK_Q);
+            ExitAction exitAction = new ExitAction();
+            /*exitAction.getWindows();*/
+            /*exitAction.getWindows(logWindow, gameWindow)*/;
+            exitMenuItem.addActionListener(exitAction);
+            exitMenu.add(exitMenuItem);
+        }
+        return exitMenu;
+    }
+
+    private JMenu createLookAndFeelMenu(){
         JMenu lookAndFeelMenu = new JMenu("Режим отображения");
         lookAndFeelMenu.setMnemonic(KeyEvent.VK_V);
         lookAndFeelMenu.getAccessibleContext().setAccessibleDescription(
                 "Управление режимом отображения приложения");
-        
+
         {
             JMenuItem systemLookAndFeel = new JMenuItem("Системная схема", KeyEvent.VK_S);
             systemLookAndFeel.addActionListener((event) -> {
@@ -122,7 +155,10 @@ public class MainApplicationFrame extends JFrame
             });
             lookAndFeelMenu.add(crossplatformLookAndFeel);
         }
+        return lookAndFeelMenu;
+    }
 
+    private JMenu createTestMenu(){
         JMenu testMenu = new JMenu("Тесты");
         testMenu.setMnemonic(KeyEvent.VK_T);
         testMenu.getAccessibleContext().setAccessibleDescription(
@@ -135,16 +171,10 @@ public class MainApplicationFrame extends JFrame
             });
             testMenu.add(addLogMessageItem);
         }
-
-        JMenu exit = new JMenu("Выход");
-        ExitAction exitAction = new ExitAction();
-        exit.add(exitAction);
-
-        menuBar.add(lookAndFeelMenu);
-        menuBar.add(testMenu);
-        menuBar.add(exit);
-        return menuBar;
+        return testMenu;
     }
+
+
     
     private void setLookAndFeel(String className)
     {
@@ -159,20 +189,4 @@ public class MainApplicationFrame extends JFrame
             // just ignore
         }
     }
-
-
-    class ExitAction extends AbstractAction
-    {
-        private static final long serialVersionUID = 1L;
-        ExitAction() {
-            putValue(NAME, "Выход");
-        }
-        public void actionPerformed(ActionEvent e) {
-            //int input = JOptionPane.showConfirmDialog(null, "Ты хочешь выйти?");
-            int input = JOptionPane.showConfirmDialog(null,
-                    "Вы точно хотите выйти?", "Подтверждение выхода",JOptionPane.YES_NO_OPTION);
-            if(input == 0) System.exit(0);
-        }
-    }
-
 }
