@@ -1,17 +1,17 @@
 package gui;
 
-import java.awt.Dimension;
-import java.awt.Toolkit;
-import java.awt.event.*;
-import java.awt.geom.Point2D;
-import java.io.Serializable;
-import java.security.Key;
+import gui.Ser.GameWindowSer;
+import gui.Ser.LogWindowSer;
+import gui.Ser.MainFrameSer;
+import log.Logger;
 
 import javax.swing.*;
-import javax.swing.event.MenuEvent;
-import javax.swing.event.MenuListener;
-
-import log.Logger;
+import java.awt.*;
+import java.awt.event.KeyEvent;
+import java.awt.event.WindowAdapter;
+import java.awt.event.WindowEvent;
+import java.beans.PropertyVetoException;
+import java.io.*;
 
 /**
  * Что требуется сделать:
@@ -19,12 +19,10 @@ import log.Logger;
  * Следует разделить его на серию более простых методов (или вообще выделить отдельный класс).
  *
  */
-public class MainApplicationFrame extends JFrame implements Serializable
+public class MainApplicationFrame extends JFrame
 {
-    private final JDesktopPane desktopPane = new JDesktopPane();
-    private Point2D gameWindowLocation;
-    private Point2D logWindowLocation;
-
+    private static final long serialVersionUID = 1L;
+    private transient final JDesktopPane desktopPane = new JDesktopPane();
     public MainApplicationFrame() {
         //Make the big window be indented 50 pixels from each edge
         //of the screen.
@@ -49,7 +47,73 @@ public class MainApplicationFrame extends JFrame implements Serializable
 
 
         setTitle("Main Application");
-        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowOpened(WindowEvent e){
+                try {
+                    MainFrameSer mainFrameSer = (MainFrameSer) restoreState("mainFrame.json");
+                    setBounds(mainFrameSer.getX(),
+                            mainFrameSer.getY(),
+                            mainFrameSer.getWidth(),
+                            mainFrameSer.getHeight());
+
+                    setState(mainFrameSer.getState());
+                    LogWindowSer logWindowSer = (LogWindowSer) restoreState("logWindow.json");
+
+                    logWindow.setLocation(logWindowSer.getX(), logWindowSer.getY());
+                    logWindow.setSize(logWindowSer.getWidth(), logWindowSer.getHeight());
+                    try {
+                        logWindow.setIcon(logWindowSer.isIcon());
+                        logWindow.setSelected(logWindowSer.isSelected());
+                    } catch (PropertyVetoException ex) {
+                        throw new RuntimeException(ex);
+                    }
+
+                    GameWindowSer gameWindowSer = (GameWindowSer) restoreState("gameWindow.json");
+                    gameWindow.setLocation(gameWindowSer.getX(), gameWindowSer.getY());
+                    gameWindow.setSize(gameWindowSer.getWidth(), gameWindowSer.getHeight());
+                    try {
+                        gameWindow.setIcon(gameWindowSer.isIcon());
+                        gameWindow.setSelected(gameWindowSer.isSelected());
+                    } catch (PropertyVetoException ex) {
+                        throw new RuntimeException(ex);
+                    }
+
+
+                } catch (IOException | ClassNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+            @Override
+            public void windowClosing(WindowEvent e) {
+                super.windowClosing(e);
+                try {
+                    MainFrameSer mainFrameSer = new MainFrameSer(getX(),getY(),getWidth(),getHeight(),getState());
+                    saveState("mainFrame.json", mainFrameSer);
+                    LogWindowSer logWindowSer = new LogWindowSer(logWindow.getX(),
+                            logWindow.getY(),
+                            logWindow.getWidth(),
+                            logWindow.getHeight(),
+                            logWindow.isIcon(),
+                            logWindow.isSelected());
+                    saveState("logWindow.json", logWindowSer);
+                    GameWindowSer gameWindowSer = new GameWindowSer(gameWindow.getX(),
+                            gameWindow.getY(),
+                            gameWindow.getWidth(),
+                            gameWindow.getHeight(),
+                            gameWindow.isIcon(),
+                            gameWindow.isSelected());
+                    saveState("gameWindow.json", gameWindowSer);
+                } catch (FileNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+            }
+        });
+        setDefaultCloseOperation(EXIT_ON_CLOSE);
+
+
     }
     
     protected LogWindow createLogWindow()
@@ -123,10 +187,12 @@ public class MainApplicationFrame extends JFrame implements Serializable
         exitMenu.setMnemonic(KeyEvent.VK_Q);
         {
             JMenuItem exitMenuItem = new JMenuItem("Выйти", KeyEvent.VK_Q);
-            ExitAction exitAction = new ExitAction();
-            /*exitAction.getWindows();*/
-            /*exitAction.getWindows(logWindow, gameWindow)*/;
-            exitMenuItem.addActionListener(exitAction);
+            exitMenuItem.addActionListener(e -> {
+                int input = JOptionPane.showConfirmDialog(null,
+                        "Вы точно хотите выйти?", "Подтверждение выхода", JOptionPane.YES_NO_OPTION);
+                if (input == 0)
+                    this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
+            });
             exitMenu.add(exitMenuItem);
         }
         return exitMenu;
@@ -188,5 +254,23 @@ public class MainApplicationFrame extends JFrame implements Serializable
         {
             // just ignore
         }
+    }
+
+    private void saveState(String fileName, Object objectToSave) throws IOException {
+        FileOutputStream fos = new FileOutputStream(fileName);
+        ObjectOutputStream oos = new ObjectOutputStream(fos);
+        oos.writeObject(objectToSave);
+        oos.flush();
+        oos.close();
+        fos.close();
+    }
+
+    private Object restoreState(String fileName) throws IOException, ClassNotFoundException {
+        FileInputStream fileInputStream = new FileInputStream(fileName);
+        ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
+        Object res = objectInputStream.readObject();
+        objectInputStream.close();
+        fileInputStream.close();
+        return res;
     }
 }

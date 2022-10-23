@@ -36,8 +36,10 @@ public class ExitAction implements ActionListener{
         this.logWindow = logWindow;
         this.gameWindow = gameWindow;
     }*/
-    private void closeMenu(){
+    private void closeMenu() {
         int input = JOptionPane.showConfirmDialog(null,
-                "Вы точно хотите выйти?", "Подтверждение выхода",JOptionPane.YES_NO_OPTION);
-        if(input == 0) frame.dispatchEvent(new WindowEvent(frame, WindowEvent.WINDOW_CLOSING));
+                "Вы точно хотите выйти?", "Подтверждение выхода", JOptionPane.YES_NO_OPTION);
+        if (input == 0)
+            System.exit(0);
+    }
 }
