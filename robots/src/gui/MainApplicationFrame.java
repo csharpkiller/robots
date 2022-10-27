@@ -1,8 +1,6 @@
 package gui;
 
-import gui.Ser.GameWindowSer;
-import gui.Ser.LogWindowSer;
-import gui.Ser.MainFrameSer;
+import gui.Ser.*;
 import log.Logger;
 
 import javax.swing.*;
@@ -12,6 +10,9 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyVetoException;
 import java.io.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Что требуется сделать:
@@ -19,6 +20,10 @@ import java.io.*;
  * Следует разделить его на серию более простых методов (или вообще выделить отдельный класс).
  *
  */
+
+//System.getProperty();
+//gameWindow.isMaximum();
+//gameWindow.getNormalBounds(); ???
 public class MainApplicationFrame extends JFrame
 {
     private static final long serialVersionUID = 1L;
@@ -50,7 +55,39 @@ public class MainApplicationFrame extends JFrame
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e){
-                try {
+
+                try{
+                    SerFramePosition serFramePosition = (SerFramePosition) restoreState("framePositions.json");
+                    ArrayList framePositions = serFramePosition.getMapArrayList();
+                    HashMap mainFramePosition = (HashMap) framePositions.get(0);
+                    setBounds(Integer.parseInt(mainFramePosition.get("X").toString()),
+                            Integer.parseInt(mainFramePosition.get("Y").toString()),
+                            Integer.parseInt(mainFramePosition.get("Width").toString()),
+                            Integer.parseInt(mainFramePosition.get("Height").toString()));
+
+                    HashMap logWindowPosition = (HashMap) framePositions.get(1);
+                    logWindow.setLocation(Integer.parseInt(logWindowPosition.get("X").toString()), Integer.parseInt(logWindowPosition.get("Y").toString()));
+                    logWindow.setSize(Integer.parseInt(logWindowPosition.get("Width").toString()), Integer.parseInt(logWindowPosition.get("Height").toString()));
+                    logWindow.setIcon(Boolean.parseBoolean(logWindowPosition.get("IsIcon").toString()));
+                    logWindow.setSelected(Boolean.parseBoolean(logWindowPosition.get("IsSelected").toString()));
+                    logWindow.setMaximum(Boolean.parseBoolean(logWindowPosition.get("IsMaximum").toString()));
+
+                    HashMap gameWindowPosition = (HashMap) framePositions.get(2);
+                    gameWindow.setLocation(Integer.parseInt(gameWindowPosition.get("X").toString()), Integer.parseInt(gameWindowPosition.get("Y").toString()));
+                    gameWindow.setSize(Integer.parseInt(gameWindowPosition.get("Width").toString()), Integer.parseInt(gameWindowPosition.get("Height").toString()));
+                    gameWindow.setIcon(Boolean.parseBoolean(gameWindowPosition.get("IsIcon").toString()));
+                    gameWindow.setSelected(Boolean.parseBoolean(gameWindowPosition.get("IsSelected").toString()));
+                    gameWindow.setMaximum(Boolean.parseBoolean(gameWindowPosition.get("IsMaximum").toString()));
+
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                } catch (ClassNotFoundException ex) {
+                    throw new RuntimeException(ex);
+                } catch (PropertyVetoException ex) {
+                    throw new RuntimeException(ex);
+                }
+
+                /*try {
                     MainFrameSer mainFrameSer = (MainFrameSer) restoreState("mainFrame.json");
                     setBounds(mainFrameSer.getX(),
                             mainFrameSer.getY(),
@@ -82,14 +119,28 @@ public class MainApplicationFrame extends JFrame
 
                 } catch (IOException | ClassNotFoundException ex) {
                     throw new RuntimeException(ex);
-                }
+                }*/
             }
             @Override
             public void windowClosing(WindowEvent e) {
                 super.windowClosing(e);
+                Map mainFramePosition = SaveFramePosition.savePosition(getComponent(0));
+                Map logWindowPosition = SaveFramePosition.savePosition(logWindow);
+                Map gameWindowPosition = SaveFramePosition.savePosition(gameWindow);
+                SerFramePosition serFramePosition = new SerFramePosition();
+                serFramePosition.addSavePosition(mainFramePosition);
+                serFramePosition.addSavePosition(logWindowPosition);
+                serFramePosition.addSavePosition(gameWindowPosition);
                 try {
+                    saveState("framePositions.json", serFramePosition);
+                } catch (IOException ex) {
+                    throw new RuntimeException(ex);
+                }
+
+                /*try {
                     MainFrameSer mainFrameSer = new MainFrameSer(getX(),getY(),getWidth(),getHeight(),getState());
                     saveState("mainFrame.json", mainFrameSer);
+
                     LogWindowSer logWindowSer = new LogWindowSer(logWindow.getX(),
                             logWindow.getY(),
                             logWindow.getWidth(),
@@ -97,18 +148,18 @@ public class MainApplicationFrame extends JFrame
                             logWindow.isIcon(),
                             logWindow.isSelected());
                     saveState("logWindow.json", logWindowSer);
+
                     GameWindowSer gameWindowSer = new GameWindowSer(gameWindow.getX(),
                             gameWindow.getY(),
                             gameWindow.getWidth(),
                             gameWindow.getHeight(),
                             gameWindow.isIcon(),
                             gameWindow.isSelected());
+
                     saveState("gameWindow.json", gameWindowSer);
-                } catch (FileNotFoundException ex) {
-                    throw new RuntimeException(ex);
                 } catch (IOException ex) {
                     throw new RuntimeException(ex);
-                }
+                }*/
             }
         });
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -185,7 +236,7 @@ public class MainApplicationFrame extends JFrame
 
         JMenu exitMenu = new JMenu("Выйти из приложения");
         exitMenu.setMnemonic(KeyEvent.VK_Q);
-        {
+
             JMenuItem exitMenuItem = new JMenuItem("Выйти", KeyEvent.VK_Q);
             exitMenuItem.addActionListener(e -> {
                 int input = JOptionPane.showConfirmDialog(null,
@@ -194,7 +245,7 @@ public class MainApplicationFrame extends JFrame
                     this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
             });
             exitMenu.add(exitMenuItem);
-        }
+
         return exitMenu;
     }
 
@@ -272,5 +323,17 @@ public class MainApplicationFrame extends JFrame
         objectInputStream.close();
         fileInputStream.close();
         return res;
+    }
+
+    public Map<String, String> someOne(Component component){
+        component.getX();
+        HashMap<String, String> result = new HashMap<String, String>();
+        result.put("x", Integer.toString(component.getX()));
+        result.put("y", Integer.toString(component.getY()));
+        if(component instanceof JInternalFrame){
+            var a = (JInternalFrame)component;
+            result.put("icon", Boolean.toString(a.isIcon()));
+        }
+        return result;
     }
 }
