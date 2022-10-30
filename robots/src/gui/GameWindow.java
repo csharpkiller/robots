@@ -1,5 +1,7 @@
 package gui;
 
+import gui.Game.GameVisualizer;
+
 import java.awt.BorderLayout;
 
 import javax.swing.JInternalFrame;

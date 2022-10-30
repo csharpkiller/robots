@@ -13,6 +13,10 @@ import java.io.*;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Properties;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Что требуется сделать:
@@ -46,6 +50,10 @@ public class MainApplicationFrame extends JFrame
         GameWindow gameWindow = new GameWindow();
         gameWindow.setSize(400,  400);
         addWindow(gameWindow);
+
+        TrackerRobotWindow trackerRobotWindow = new TrackerRobotWindow();
+        trackerRobotWindow.setSize(400,  400);
+        addWindow(trackerRobotWindow);
 
         setJMenuBar(generateMenuBar(logWindow, gameWindow));
         //setDefaultCloseOperation(EXIT_ON_CLOSE); def
@@ -308,7 +316,9 @@ public class MainApplicationFrame extends JFrame
     }
 
     private void saveState(String fileName, Object objectToSave) throws IOException {
-        FileOutputStream fos = new FileOutputStream(fileName);
+        Properties properties = System.getProperties();
+        String userHome = properties.getProperty("user.home");
+        FileOutputStream fos = new FileOutputStream(userHome+"\\\\"+fileName);
         ObjectOutputStream oos = new ObjectOutputStream(fos);
         oos.writeObject(objectToSave);
         oos.flush();
@@ -317,7 +327,9 @@ public class MainApplicationFrame extends JFrame
     }
 
     private Object restoreState(String fileName) throws IOException, ClassNotFoundException {
-        FileInputStream fileInputStream = new FileInputStream(fileName);
+        Properties properties = System.getProperties();
+        String userHome = properties.getProperty("user.home");
+        FileInputStream fileInputStream = new FileInputStream(userHome+"\\\\"+fileName);
         ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
         Object res = objectInputStream.readObject();
         objectInputStream.close();
