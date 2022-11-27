@@ -1,27 +1,26 @@
 package gui.Game;
 
-import gui.TrackerRobotWindow;
-import gui.Observed;
-import gui.Observer;
-
 import java.awt.*;
+import java.util.Observable;
 
 
-public class GameLogic implements Observed {
+public class GameLogic extends Observable{
     protected volatile double m_robotPositionX = 100;
     protected volatile double m_robotPositionY = 100;
     protected volatile double m_robotDirection = 0;
 
-    protected volatile int m_targetPositionX = 150;
-    protected volatile int m_targetPositionY = 100;
+    protected volatile int m_targetPositionX = 250;
+    protected volatile int m_targetPositionY = 200; // 100
 
-    protected static final double maxVelocity = 0.1;
-    protected static final double maxAngularVelocity = 0.001;
+    protected static final double maxVelocity = 0.1; // 0.1
+    protected static final double maxAngularVelocity = 0.001; //0.001
+
+    // костыль1
+    private static boolean isFirstTime = true;
 
     public double[] getRobotPosition(){
         return new double[]{m_robotPositionX, m_robotPositionY};
     }
-    public Observer observer = new TrackerRobotWindow();
 
     protected void setTargetPosition(Point p)
     {
@@ -39,8 +38,18 @@ public class GameLogic implements Observed {
     {
         double diffX = toX - fromX;
         double diffY = toY - fromY;
+        double polarSystemCoord;
 
-        return asNormalizedRadians(Math.atan2(diffY, diffX));
+        // костыль1
+        if(isFirstTime){
+            polarSystemCoord=0.0;
+            isFirstTime = false;
+        }
+        else {
+            polarSystemCoord = (Math.atan2(diffY, diffX)); // полярная система коорд.
+        }
+        //polarSystemCoord = (Math.atan2(diffY, diffX)); // полярная система коорд.
+        return asNormalizedRadians(polarSystemCoord);
     }
 
     protected void onModelUpdateEvent()
@@ -53,8 +62,8 @@ public class GameLogic implements Observed {
         }
         double velocity = maxVelocity;
         double angleToTarget = angleTo(m_robotPositionX, m_robotPositionY, m_targetPositionX, m_targetPositionY);
-        double angularVelocity = 0;
-        if (angleToTarget > m_robotDirection)
+        double angularVelocity = 0; // скорость поворота
+        if (angleToTarget > m_robotDirection) // m_robotDirection == 0
         {
             angularVelocity = maxAngularVelocity;
         }
@@ -77,8 +86,10 @@ public class GameLogic implements Observed {
 
     private void moveRobot(double velocity, double angularVelocity, double duration)
     {
-        velocity = applyLimits(velocity, 0, maxVelocity);
-        angularVelocity = applyLimits(angularVelocity, -maxAngularVelocity, maxAngularVelocity);
+        velocity = applyLimits(velocity, 0, maxVelocity); // скорость
+
+        angularVelocity = applyLimits(angularVelocity, -maxAngularVelocity, maxAngularVelocity); // скорость поворота
+
         double newX = m_robotPositionX + velocity / angularVelocity *
                 (Math.sin(m_robotDirection  + angularVelocity * duration) -
                         Math.sin(m_robotDirection));
@@ -95,12 +106,18 @@ public class GameLogic implements Observed {
         }
         m_robotPositionX = newX;
         m_robotPositionY = newY;
-        notifyObserver();
+        //notifyObserver();
+
         double newDirection = asNormalizedRadians(m_robotDirection + angularVelocity * duration);
+        double[] toNotyf = new double[2];
+        toNotyf[0] = newX;
+        toNotyf[1] = newY;
+        setChanged();
+        notifyObservers(toNotyf);
         m_robotDirection = newDirection;
     }
 
-    private static double asNormalizedRadians(double angle)
+    private static double asNormalizedRadians(double angle) // angle = polsystcord
     {
         while (angle < 0)
         {
@@ -111,20 +128,5 @@ public class GameLogic implements Observed {
             angle -= 2*Math.PI;
         }
         return angle;
-    }
-
-    @Override
-    public void addObserver(Observer observer) {
-
-    }
-
-    @Override
-    public void removeObserver(Observer observer) {
-
-    }
-
-    @Override
-    public void notifyObserver() {
-        observer.handleEvent(getRobotPosition());
     }
 }

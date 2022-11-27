@@ -1,19 +1,21 @@
 package gui;
 
+import gui.Game.GameLogic;
 import gui.Ser.*;
 import log.Logger;
 
 import javax.swing.*;
+import javax.swing.event.InternalFrameEvent;
+import javax.swing.event.InternalFrameListener;
 import java.awt.*;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.beans.PropertyVetoException;
 import java.io.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Properties;
+import java.lang.reflect.Array;
+import java.nio.file.Path;
+import java.util.*;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
@@ -42,8 +44,8 @@ public class MainApplicationFrame extends JFrame
             screenSize.height - inset*2);
 
         setContentPane(desktopPane);
-        
-        
+
+
         LogWindow logWindow = createLogWindow();
         addWindow(logWindow);
 
@@ -51,123 +53,55 @@ public class MainApplicationFrame extends JFrame
         gameWindow.setSize(400,  400);
         addWindow(gameWindow);
 
+        GameLogic gameLogic = gameWindow.getM_visualizer().gameLogic;
         TrackerRobotWindow trackerRobotWindow = new TrackerRobotWindow();
+
+        gameLogic.addObserver(trackerRobotWindow);
+
         trackerRobotWindow.setSize(400,  400);
-        addWindow(trackerRobotWindow);
+        addWindow(trackerRobotWindow.frame);
 
         setJMenuBar(generateMenuBar(logWindow, gameWindow));
-        //setDefaultCloseOperation(EXIT_ON_CLOSE); def
-
 
         setTitle("Main Application");
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowOpened(WindowEvent e){
+                ArrayList framePositions = (ArrayList) restoreState("framePositions.json");
 
-                try{
-                    SerFramePosition serFramePosition = (SerFramePosition) restoreState("framePositions.json");
-                    ArrayList framePositions = serFramePosition.getMapArrayList();
-                    HashMap mainFramePosition = (HashMap) framePositions.get(0);
-                    setBounds(Integer.parseInt(mainFramePosition.get("X").toString()),
-                            Integer.parseInt(mainFramePosition.get("Y").toString()),
-                            Integer.parseInt(mainFramePosition.get("Width").toString()),
-                            Integer.parseInt(mainFramePosition.get("Height").toString()));
+                Map positionMap = (HashMap)framePositions.get(0);
+                String numberToFrameStr = positionMap.get("MainWindow").toString();
 
-                    HashMap logWindowPosition = (HashMap) framePositions.get(1);
-                    logWindow.setLocation(Integer.parseInt(logWindowPosition.get("X").toString()), Integer.parseInt(logWindowPosition.get("Y").toString()));
-                    logWindow.setSize(Integer.parseInt(logWindowPosition.get("Width").toString()), Integer.parseInt(logWindowPosition.get("Height").toString()));
-                    logWindow.setIcon(Boolean.parseBoolean(logWindowPosition.get("IsIcon").toString()));
-                    logWindow.setSelected(Boolean.parseBoolean(logWindowPosition.get("IsSelected").toString()));
-                    logWindow.setMaximum(Boolean.parseBoolean(logWindowPosition.get("IsMaximum").toString()));
+                ArrayList<JFrame> arrayList = new ArrayList<>();
 
-                    HashMap gameWindowPosition = (HashMap) framePositions.get(2);
-                    gameWindow.setLocation(Integer.parseInt(gameWindowPosition.get("X").toString()), Integer.parseInt(gameWindowPosition.get("Y").toString()));
-                    gameWindow.setSize(Integer.parseInt(gameWindowPosition.get("Width").toString()), Integer.parseInt(gameWindowPosition.get("Height").toString()));
-                    gameWindow.setIcon(Boolean.parseBoolean(gameWindowPosition.get("IsIcon").toString()));
-                    gameWindow.setSelected(Boolean.parseBoolean(gameWindowPosition.get("IsSelected").toString()));
-                    gameWindow.setMaximum(Boolean.parseBoolean(gameWindowPosition.get("IsMaximum").toString()));
+                HashMap mainFramePosition = (HashMap) framePositions.get(Integer.parseInt(numberToFrameStr));
+                setBounds(Integer.parseInt(mainFramePosition.get("X").toString()),
+                        Integer.parseInt(mainFramePosition.get("Y").toString()),
+                        Integer.parseInt(mainFramePosition.get("Width").toString()),
+                        Integer.parseInt(mainFramePosition.get("Height").toString()));
 
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                } catch (ClassNotFoundException ex) {
-                    throw new RuntimeException(ex);
-                } catch (PropertyVetoException ex) {
-                    throw new RuntimeException(ex);
-                }
-
-                /*try {
-                    MainFrameSer mainFrameSer = (MainFrameSer) restoreState("mainFrame.json");
-                    setBounds(mainFrameSer.getX(),
-                            mainFrameSer.getY(),
-                            mainFrameSer.getWidth(),
-                            mainFrameSer.getHeight());
-
-                    setState(mainFrameSer.getState());
-                    LogWindowSer logWindowSer = (LogWindowSer) restoreState("logWindow.json");
-
-                    logWindow.setLocation(logWindowSer.getX(), logWindowSer.getY());
-                    logWindow.setSize(logWindowSer.getWidth(), logWindowSer.getHeight());
-                    try {
-                        logWindow.setIcon(logWindowSer.isIcon());
-                        logWindow.setSelected(logWindowSer.isSelected());
-                    } catch (PropertyVetoException ex) {
-                        throw new RuntimeException(ex);
-                    }
-
-                    GameWindowSer gameWindowSer = (GameWindowSer) restoreState("gameWindow.json");
-                    gameWindow.setLocation(gameWindowSer.getX(), gameWindowSer.getY());
-                    gameWindow.setSize(gameWindowSer.getWidth(), gameWindowSer.getHeight());
-                    try {
-                        gameWindow.setIcon(gameWindowSer.isIcon());
-                        gameWindow.setSelected(gameWindowSer.isSelected());
-                    } catch (PropertyVetoException ex) {
-                        throw new RuntimeException(ex);
-                    }
-
-
-                } catch (IOException | ClassNotFoundException ex) {
-                    throw new RuntimeException(ex);
-                }*/
+                setWindowPosition(logWindow, positionMap, framePositions, "LogWindow");
+                setWindowPosition(gameWindow, positionMap, framePositions, "GameWindow");
             }
             @Override
             public void windowClosing(WindowEvent e) {
                 super.windowClosing(e);
-                Map mainFramePosition = SaveFramePosition.savePosition(getComponent(0));
-                Map logWindowPosition = SaveFramePosition.savePosition(logWindow);
-                Map gameWindowPosition = SaveFramePosition.savePosition(gameWindow);
-                SerFramePosition serFramePosition = new SerFramePosition();
-                serFramePosition.addSavePosition(mainFramePosition);
-                serFramePosition.addSavePosition(logWindowPosition);
-                serFramePosition.addSavePosition(gameWindowPosition);
-                try {
-                    saveState("framePositions.json", serFramePosition);
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }
+                Map<String, String> mainFramePosition = SaveFramePosition.savePosition(getComponent(0).getParent()); // как - то поменять
+                Map<String, String> logWindowPosition = SaveFramePosition.savePosition(logWindow);
+                Map<String, String> gameWindowPosition = SaveFramePosition.savePosition(gameWindow);
 
-                /*try {
-                    MainFrameSer mainFrameSer = new MainFrameSer(getX(),getY(),getWidth(),getHeight(),getState());
-                    saveState("mainFrame.json", mainFrameSer);
+                Map<String, String> alias = new HashMap<>();
+                alias.put("MainWindow", "1");
+                alias.put("LogWindow", "2");
+                alias.put("GameWindow", "3");
 
-                    LogWindowSer logWindowSer = new LogWindowSer(logWindow.getX(),
-                            logWindow.getY(),
-                            logWindow.getWidth(),
-                            logWindow.getHeight(),
-                            logWindow.isIcon(),
-                            logWindow.isSelected());
-                    saveState("logWindow.json", logWindowSer);
+                ArrayList<Map<String, String>> mapArrayListToSave = new ArrayList<>();
+                mapArrayListToSave.add(alias);
+                mapArrayListToSave.add(mainFramePosition);
+                mapArrayListToSave.add(logWindowPosition);
+                mapArrayListToSave.add(gameWindowPosition);
 
-                    GameWindowSer gameWindowSer = new GameWindowSer(gameWindow.getX(),
-                            gameWindow.getY(),
-                            gameWindow.getWidth(),
-                            gameWindow.getHeight(),
-                            gameWindow.isIcon(),
-                            gameWindow.isSelected());
-
-                    saveState("gameWindow.json", gameWindowSer);
-                } catch (IOException ex) {
-                    throw new RuntimeException(ex);
-                }*/
+                saveState("framePositions.json", mapArrayListToSave);
             }
         });
         setDefaultCloseOperation(EXIT_ON_CLOSE);
@@ -191,36 +125,6 @@ public class MainApplicationFrame extends JFrame
         desktopPane.add(frame);
         frame.setVisible(true);
     }
-    
-//    protected JMenuBar createMenuBar() {
-//        JMenuBar menuBar = new JMenuBar();
-// 
-//        //Set up the lone menu.
-//        JMenu menu = new JMenu("Document");
-//        menu.setMnemonic(KeyEvent.VK_D);
-//        menuBar.add(menu);
-// 
-//        //Set up the first menu item.
-//        JMenuItem menuItem = new JMenuItem("New");
-//        menuItem.setMnemonic(KeyEvent.VK_N);
-//        menuItem.setAccelerator(KeyStroke.getKeyStroke(
-//                KeyEvent.VK_N, ActionEvent.ALT_MASK));
-//        menuItem.setActionCommand("new");
-////        menuItem.addActionListener(this);
-//        menu.add(menuItem);
-// 
-//        //Set up the second menu item.
-//        menuItem = new JMenuItem("Quit");
-//        menuItem.setMnemonic(KeyEvent.VK_Q);
-//        menuItem.setAccelerator(KeyStroke.getKeyStroke(
-//                KeyEvent.VK_Q, ActionEvent.ALT_MASK));
-//        menuItem.setActionCommand("quit");
-////        menuItem.addActionListener(this);
-//        menu.add(menuItem);
-// 
-//        return menuBar;
-//    }
-    
     private JMenuBar generateMenuBar(LogWindow logWindow, GameWindow gameWindow)
     {
         UIManager.put("OptionPane.yesButtonText", "Да");
@@ -228,18 +132,11 @@ public class MainApplicationFrame extends JFrame
 
         JMenuBar menuBar = new JMenuBar();
 
-
-        /*JMenu exit = new JMenu("Выход");
-        ExitAction exitAction = new ExitAction();
-        exit.add(exitAction);*/
-
         menuBar.add(createLookAndFeelMenu());
         menuBar.add(createTestMenu());
         menuBar.add(createExitMenu());
         return menuBar;
     }
-    // secv pizda lagaet nice nout
-
     private JMenu createExitMenu(){
 
         JMenu exitMenu = new JMenu("Выйти из приложения");
@@ -315,37 +212,67 @@ public class MainApplicationFrame extends JFrame
         }
     }
 
-    private void saveState(String fileName, Object objectToSave) throws IOException {
+    private void saveState(String fileName, Object objectToSave){
         Properties properties = System.getProperties();
         String userHome = properties.getProperty("user.home");
-        FileOutputStream fos = new FileOutputStream(userHome+"\\\\"+fileName);
-        ObjectOutputStream oos = new ObjectOutputStream(fos);
-        oos.writeObject(objectToSave);
-        oos.flush();
-        oos.close();
-        fos.close();
+        var targetPath = Path.of(userHome).resolve(fileName);
+        try(FileOutputStream fos = new FileOutputStream(targetPath.toFile());
+            ObjectOutputStream oos = new ObjectOutputStream(fos)){
+            oos.writeObject(objectToSave);
+            oos.flush();
+            oos.close();
+            fos.close();
+        } catch (FileNotFoundException e) {
+            throw new RuntimeException(e);
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+
     }
 
-    private Object restoreState(String fileName) throws IOException, ClassNotFoundException {
+    private Object restoreState(String fileName){
         Properties properties = System.getProperties();
         String userHome = properties.getProperty("user.home");
-        FileInputStream fileInputStream = new FileInputStream(userHome+"\\\\"+fileName);
-        ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream);
-        Object res = objectInputStream.readObject();
-        objectInputStream.close();
-        fileInputStream.close();
+        var targetPath = Path.of(userHome).resolve(fileName);
+        Object res = null;
+        try(FileInputStream fileInputStream = new FileInputStream(targetPath.toFile());
+            ObjectInputStream objectInputStream = new ObjectInputStream(fileInputStream)){
+            res = objectInputStream.readObject();
+            objectInputStream.close();
+            fileInputStream.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         return res;
     }
+    public static void setWindowPosition(JInternalFrame frame,
+                                  Map<String, String> alias,
+                                  ArrayList<Map<String, String>> windowsPositions,
+                                  String windowName){
 
-    public Map<String, String> someOne(Component component){
-        component.getX();
-        HashMap<String, String> result = new HashMap<String, String>();
-        result.put("x", Integer.toString(component.getX()));
-        result.put("y", Integer.toString(component.getY()));
-        if(component instanceof JInternalFrame){
-            var a = (JInternalFrame)component;
-            result.put("icon", Boolean.toString(a.isIcon()));
+        int listNumber = Integer.parseInt(alias.get(windowName));
+        Map windowPosition = windowsPositions.get(listNumber);
+
+        switch (windowName){
+            case "LogWindow":
+                frame = (LogWindow)frame;
+                break;
+            case "GameWindow":
+                frame = (GameWindow)frame;
+                break;
         }
-        return result;
+
+        frame.setLocation(Integer.parseInt(windowPosition.get("X").toString()), Integer.parseInt(windowPosition.get("Y").toString()));
+        frame.setSize(Integer.parseInt(windowPosition.get("Width").toString()), Integer.parseInt(windowPosition.get("Height").toString()));
+        try {
+            frame.setIcon(Boolean.parseBoolean(windowPosition.get("IsIcon").toString()));
+            frame.setSelected(Boolean.parseBoolean(windowPosition.get("IsSelected").toString()));
+            frame.setMaximum(Boolean.parseBoolean(windowPosition.get("IsMaximum").toString()));
+        } catch (PropertyVetoException e) {
+            throw new RuntimeException(e);
+        }
     }
+
 }
